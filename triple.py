@@ -11,14 +11,14 @@ import numpy as np
 import time
 import os
 
-from dataset.dataset import MultiViewDataSet
+from utils.dataset import MultiViewDataSet
 from utils.backbone import Backbone
 
 MVCNN = 'mvcnn'
 MODELS = [MVCNN]
 
 parser = argparse.ArgumentParser(description='MVCNN-PyTorch')
-parser.add_argument('data', metavar='DIR', help='path to dataset')
+parser.add_argument('--data', metavar='DIR', help='path to dataset')
 parser.add_argument('--depth', choices=[18, 34, 50, 101, 152], type=int, metavar='N', default=18,
                     help='resnet depth (default: resnet18)')
 parser.add_argument('--model', '-m', metavar='MODEL', default=MVCNN, choices=MODELS,
@@ -54,10 +54,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load dataset
 dset_train = MultiViewDataSet(args.data, 'train', transform=transform)
-train_loader = DataLoader(dset_train, batch_size=args.batch_size, shuffle=True, num_workers=2)
+train_loader = DataLoader(dset_train, batch_size=args.batch_size, shuffle=True)
 
-dset_val = MultiViewDataSet(args.data, 'test', transform=transform)
-val_loader = DataLoader(dset_val, batch_size=args.batch_size, shuffle=True, num_workers=2)
+dset_val = MultiViewDataSet(args.data, 'val', transform=transform)
+val_loader = DataLoader(dset_val, batch_size=args.batch_size, shuffle=True)
 
 classes = dset_train.classes
 print(len(classes), classes)
@@ -81,24 +81,13 @@ best_loss = 0.0
 start_epoch = 0
 
 
-# Helper functions
-def load_checkpoint():
-    global best_acc, start_epoch
-    # Load checkpoint.
-    print('\n==> Loading checkpoint..')
-    assert os.path.isfile(args.resume), 'Error: no checkpoint file found!'
-
-    checkpoint = torch.load(args.resume)
-    best_acc = checkpoint['best_acc']
-    start_epoch = checkpoint['epoch']
-    model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
-
-
 def train():
     train_size = len(train_loader)
 
     for i, (inputs, targets) in enumerate(train_loader):
+        if i == 0:
+            print(inputs)
+            print(targets)
         # Convert from list of 3D to 4D
         inputs = np.stack(inputs, axis=1)
 
@@ -122,8 +111,6 @@ def train():
 
 # Validation and Testing
 def eval(data_loader, is_test=False):
-    if is_test:
-        load_checkpoint()
 
     # Eval
     total = 0.0
@@ -158,10 +145,6 @@ def eval(data_loader, is_test=False):
 
     return avg_test_acc, avg_loss
 
-
-# Training / Eval loop
-if args.resume:
-    load_checkpoint()
 
 for epoch in range(start_epoch, n_epochs):
     print('\n-----------------------------------')

@@ -18,11 +18,12 @@ def img2label_paths(img_paths):
 
 class MultiViewDataSet(Dataset):
 
-    def __init__(self, root, set_type):
+    def __init__(self, root, set_type, transform):
         self.images = []
         self.labels = []
         self.root = root
         self.set_type = set_type
+        self.transform = transform
 
         f = open(root, 'r')
         cfg = f.read()
@@ -44,17 +45,18 @@ class MultiViewDataSet(Dataset):
     def __getitem__(self, index):
         image = Image.open(self.images[index])
         image = image.convert('RGB')
+        image = self.transform(image)
+
         label_path = Path(self.labels[index])
+        label = []
         if label_path.is_file():
             with open(label_path, 'r') as f:
-                print()
+                label = f.read().split(' ')
         else:
             assert 'no label file'
-        return image, self.labels[index]
+        return image, label
 
     # Override to give PyTorch size of dataset
     def __len__(self):
         return len(self.images)
 
-
-MultiViewDataSet('data/curve/data.yaml', 'train')
